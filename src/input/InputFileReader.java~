@@ -1,0 +1,155 @@
+import java.io.*;
+import java.util.HashMap;
+import java.util.Properties;
+
+/**
+ *
+ * Created by Alexis Espinoza on 12/28/15.
+ */
+public class InputFileReader {
+    /**
+     * Takes the name of a file, reads it line by line and stores each line in a hashmap<String,Integer>
+     * For every cycle the key is checked if it exists.If it does, the value read is summed up with what's
+     * stored for that key.The format of the lines in the file must be <STRING><COMMA><INTEGER>.
+     * lines that do not follow that format will simply be ignored.
+     * @param propertyFileName Name of property file to read(Defined in )
+     * @return HashMap data structured containing the keys and their summed up values
+     */
+    public static HashMap KeyCount(String propertyFileName) {
+        Properties prop = InputFileReader.propertyReader();
+        HashMap<String, Integer> keyCountHash = new HashMap<String, Integer>();
+        if(!prop.isEmpty()) {
+            String fileName=prop.getProperty(propertyFileName);
+            String acceptableFileFormats=prop.getProperty("acceptableFileFormats");
+            String fileFormat=getFileFormat(fileName);
+            //We first check for the format of the file it should be compliant with what's defined in the properties
+            if(acceptableFileFormats.toLowerCase().contains(fileFormat.toLowerCase())) {
+                try {
+                    // Open the file for reading.
+                    FileInputStream f = new FileInputStream(fileName);
+                    // Read all contents of the file.
+                    try {
+                        String line=null;
+                        String [] parts;
+                        BufferedReader in = new BufferedReader(new InputStreamReader(f));
+                        int lineNumber = 1;
+                        while ((line = in.readLine()) != null) {//Reading line by line
+                            if (isLineFormatCorrect(line)) { //checking that the format of the line is <STRING><COMMA><INTEGER>.
+                                parts = line.split(","); //Splits the line by the COMMA and assigns the key to parts[0] and the value to parts[1]
+                                //Checks if the key exists. If it does, the value parts[1] is summed up with what is stored for that key
+                                parts[1] = parts[1].replaceAll("\\s+", "");//remove white space just in case
+                                if ((!keyCountHash.isEmpty()) && (keyCountHash.containsKey(parts[0])))
+                                    keyCountHash.put(parts[0], keyCountHash.get(parts[0]) + Integer.parseInt(parts[1]));
+                                else
+                                    keyCountHash.put(parts[0], Integer.parseInt(parts[1])); //Creates a new <key,value> pair
+                            } else {
+                                System.out.println("Line " + lineNumber + ": " + line + " does not comply with line format <STRING><COMMA><INTEGER>");
+                            }
+                            lineNumber++;
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+
+                } catch (FileNotFoundException e) { // In case the file or directory do not exist. Files shoudl be stored in src/input/ folder
+                    System.out.println(fileName + " not Found in path. Make sure the file can at least be read");
+                }
+            }else {
+                System.out.println(fileFormat+ " is an invalid file format. Formats allowed are "+acceptableFileFormats);
+            }
+        }else{
+            System.out.println("Input file not found"); //Check the name for the properties file in propertyReader method
+        }
+        return keyCountHash;
+    }
+    /**
+     * Returns true if the format of the line is  <STRING><COMMA><INTEGER>.
+     *
+     * @param line contains the line read from the file
+     * @return boolean if the line is compliant with the format detailed above or not
+     */
+    private static boolean isLineFormatCorrect(String line){
+        boolean isLineCorrect=false;
+
+        if(line.contains(",")) {
+            String [] parts=line.split(",");
+            if((parts.length==2)&&(isInteger(parts[1].replaceAll("\\s+",""))))
+                isLineCorrect=true;
+
+        }
+        return isLineCorrect;
+    }
+
+    /**
+     * Returns String with the format of the file
+     *
+     * @param fullPathFile contains the relative path to the file or simply the name  ile
+     * @return String. File format
+     */
+    private static String getFileFormat(String fullPathFile){
+        String fileName=null;
+        String[] fileParts;
+        int last;
+        if((!fullPathFile.isEmpty())&&(fullPathFile.contains("/"))) {
+            String[] folderParts = fullPathFile.split("/");
+            if(folderParts.length>0) {
+                last = folderParts.length-1;
+                if(folderParts[last].contains(".")) {
+                    fileParts = folderParts[last].split("\\.");
+                    last = fileParts.length-1;
+                    fileName=fileParts[last];
+                }
+            }
+
+        }else if (fullPathFile.contains(".")){
+             fileParts=fullPathFile.split("\\.");
+             last = fileParts.length-1;
+             fileName=fileParts[last];
+        }
+        return fileName;
+    }
+    /**
+     * Returns true if the String s is an integer.
+     * Used in isLineFormatCorrect method
+     * @param stringNumber contains the potential Integer in the form of a String
+     * @return boolean if the String passed is a number or not
+     */
+    private static boolean isInteger(String stringNumber) {
+        if(stringNumber.isEmpty()) return false;
+        int radix=10;
+        for(int i = 0; i < stringNumber.length(); i++) {
+            if(i == 0 && stringNumber.charAt(i) == '-') {
+                if(stringNumber.length() == 1) return false;
+                else continue;
+            }
+            //Compares the String for equality with potential numbers from 0 to 10
+            if(Character.digit(stringNumber.charAt(i),radix) < 0) return false;
+        }
+        return true;
+    }
+
+    /**
+     * Property file reader. Reads al variables located at  src/config/config.properties
+     * do Properties.var to access the variables. var should be the name for the variable defined at the file
+     * @return property variables set at src/config/config.properties
+     */
+    public static Properties propertyReader(){
+        Properties prop = new Properties();
+        InputStream input=null;
+        try {
+            input = new FileInputStream("src/config/config.properties"); //reads properties
+            prop.load(input);
+        }catch(IOException e ){ //In case the properties cannot be read for some reason
+            //e.printStackTrace();// Activate in case you want to see the verbose stack
+        }finally { // This will alwalys get executed no matter what.
+            if (input != null) {
+                try {
+                    input.close();
+                }catch (IOException e) {
+                   // e.printStackTrace(); //Activate in case you want to see the verbose stack
+                }
+            }
+        }
+        return prop;
+    }
+}
